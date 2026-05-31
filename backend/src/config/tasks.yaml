@@ -1,0 +1,7 @@
+sales_task:
+  description: >
+    Khách hàng đang hỏi: '{message}'. Lịch sử hội thoại: '{history_str}'.
+    Hãy sử dụng công cụ search_weaviate_tool để tìm sản phẩm phù hợp.
+    QUAN TRỌNG: Bạn phải kiểm tra kỹ giá sản phẩm (price). Tuyệt đối không được giới thiệu sản phẩm có giá vượt quá số tiền khách hàng yêu cầu. Nếu sản phẩm tìm thấy quá đắt, hãy lịch sự thông báo và tìm sản phẩm rẻ hơn.
+  expected_output: >
+    Một câu trả lời tư vấn bán hàng bằng tiếng Việt thân thiện, liệt kê rõ tên sản phẩm, cấu hình pin, giá tiền và link sản phẩm phù hợp CHÍNH XÁC với túi tiền của khách.

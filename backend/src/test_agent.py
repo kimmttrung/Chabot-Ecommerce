@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import hàm bạn muốn test trực tiếp
-from craw import run_sales_agent
+from agents.crew import run_sales_agent
 
 def debug_test():
     print("--- BẮT ĐẦU KIỂM TRA ĐỘC LẬP SALES AGENT ---")

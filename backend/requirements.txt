@@ -11,3 +11,5 @@ fastapi
 uvicorn
 agents
 weaviate-client>=4.5.4
+langchain-huggingface 
+sentence-transformers

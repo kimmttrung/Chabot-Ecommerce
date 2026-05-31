@@ -72,7 +72,7 @@ function App() {
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
-        text: data.reply || 'Xin lỗi, tôi gặp sự cố khi xử lý thông tin.',
+        text: data.response || 'Xin lỗi, tôi gặp sự cố khi xử lý thông tin.',
         timestamp: new Date()
       };
 
