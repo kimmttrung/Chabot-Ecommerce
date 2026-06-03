@@ -19,7 +19,7 @@ class MySalesCrew:
         # Khởi tạo bộ não LLM thông qua Groq
         self.llm = LLM(
             model="groq/llama-3.1-8b-instant",
-            temperature=0.2
+            temperature=0.1
         )
 
     @agent
