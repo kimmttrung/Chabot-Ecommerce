@@ -65,6 +65,8 @@ async def chat_endpoint(request: ChatRequest):
         "history": history,
     }
 
+
+
 if __name__ == "__main__":
     import uvicorn
 

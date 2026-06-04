@@ -30,7 +30,7 @@ class MySalesCrew:
             tools=[search_weaviate_tool],
             verbose=True,
             allow_delegation=False,
-            max_iter=10,
+            max_iter=2,
             respect_context_window=True,
             use_system_prompt=True,
             cache=False
