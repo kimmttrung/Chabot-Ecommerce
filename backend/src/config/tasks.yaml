@@ -1,7 +1,16 @@
 sales_task:
-  description: >
-    Khách hàng đang hỏi: '{message}'. Lịch sử hội thoại: '{history_str}'.
-    Hãy sử dụng công cụ search_weaviate_tool để tìm sản phẩm phù hợp.
-    QUAN TRỌNG: Bạn phải kiểm tra kỹ giá sản phẩm (price). Tuyệt đối không được giới thiệu sản phẩm có giá vượt quá số tiền khách hàng yêu cầu. Nếu sản phẩm tìm thấy quá đắt, hãy lịch sự thông báo và tìm sản phẩm rẻ hơn.
-  expected_output: >
-    Một câu trả lời tư vấn bán hàng bằng tiếng Việt thân thiện, liệt kê rõ tên sản phẩm, cấu hình pin, giá tiền và link sản phẩm phù hợp CHÍNH XÁC với túi tiền của khách.
+  description: >-
+    Khách hàng đang nói: '{message}'. 
+    Lịch sử cuộc trò chuyện để bạn nắm bối cảnh: '{history_str}'.
+
+    Hãy thực hiện các bước sau:
+    1. Phân tích nhu cầu của khách (Hãng gì? Tầm giá bao nhiêu?).
+    2. Sử dụng công cụ `search_weaviate_tool` để quét dữ liệu sản phẩm trong kho.
+    3. Tổng hợp kết quả nhận được từ tool. 
+    4. Viết một câu trả lời tư vấn hoàn thiện bằng tiếng Việt gửi cho khách hàng.
+  expected_output: >-
+    Một lời phản hồi hội thoại tự nhiên, thân thiện từ vị trí tư vấn viên Phúc Anh. 
+    Lời thoại phải bao gồm: 
+    - Lời chào/lời phản hồi tâm lý (Ví dụ: 'Với tầm giá dưới 5 triệu, Samsung có một vài lựa chọn cực kỳ kinh tế đấy ạ...').
+    - Thông tin chi tiết, ưu điểm nổi bật của các dòng máy tìm được (tối đa 3 mẫu) để khách dễ chọn.
+    - Một câu hỏi gợi mở ở cuối để tiếp tục giữ chân khách (Ví dụ: 'Quý khách thích mẫu nào nhất trong 3 mẫu trên để em tư vấn sâu hơn về chương trình khuyến mãi ạ?').

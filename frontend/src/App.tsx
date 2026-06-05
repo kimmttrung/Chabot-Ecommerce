@@ -1,98 +1,109 @@
-import { useState } from 'react';
+// src/App.tsx
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
+import { useSessions } from './hooks/useSessions';
+import { chatApi } from './services/api';
 import type { ChatSession, Message } from './types/chat';
 
 function App() {
-  const [sessions, setSessions] = useState<ChatSession[]>([
-    { id: '1', title: 'Tư vấn mua Laptop Gaming', messages: [] }
-  ]);
-  const [activeSessionId, setActiveSessionId] = useState<string>('1');
+  const { sessions, loading, createSession, deleteSession, fetchSessions } = useSessions();
+  const [activeSessionId, setActiveSessionId] = useState<string>('');
+  const [sessionMessages, setSessionMessages] = useState<Record<string, Message[]>>({});
 
-  const activeSession = sessions.find(s => s.id === activeSessionId);
+  // Khi sessions thay đổi, chọn active session đầu tiên nếu chưa có
+  useEffect(() => {
+    let newActiveId = activeSessionId;
 
-  // Tạo Session mới
-  const handleCreateSession = () => {
-    const newSession: ChatSession = {
-      id: Date.now().toString(),
-      title: `Cuộc trò chuyện mới`,
-      messages: []
-    };
-    setSessions([newSession, ...sessions]);
-    setActiveSessionId(newSession.id);
-  };
-
-  // Xóa Session
-  const handleDeleteSession = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Tránh kích hoạt sự kiện chọn Session
-    const filtered = sessions.filter(s => s.id !== id);
-    setSessions(filtered);
-    if (activeSessionId === id && filtered.length > 0) {
-      setActiveSessionId(filtered[0].id);
+    if (sessions.length === 0) {
+      newActiveId = '';
+    } else if (!sessions.some(s => s.id === activeSessionId)) {
+      // Nếu activeSessionId hiện tại không còn trong danh sách (do xóa hoặc reset)
+      newActiveId = sessions[0].id;
     }
+
+    // Chỉ set state khi thực sự khác, tránh render vô ích
+    if (newActiveId !== activeSessionId) {
+      setActiveSessionId(newActiveId);
+    }
+  }, [sessions, activeSessionId]);
+
+  const chatSessions: ChatSession[] = sessions.map(s => ({
+    id: s.id,
+    title: s.title,
+    messages: sessionMessages[s.id] || [],
+  }));
+
+  const activeSession = chatSessions.find(s => s.id === activeSessionId);
+
+  const handleCreateSession = async () => {
+    const newId = await createSession();
+    if (newId) setActiveSessionId(newId);
   };
 
-  // Gửi tin nhắn và gọi API Backend
+  const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const success = await deleteSession(id);
+    if (success && activeSessionId === id) {
+      const remaining = sessions.filter(s => s.id !== id);
+      setActiveSessionId(remaining.length > 0 ? remaining[0].id : '');
+    }
+    setSessionMessages(prev => {
+      const newMap = { ...prev };
+      delete newMap[id];
+      return newMap;
+    });
+  };
+
   const handleSendMessage = async (text: string) => {
+    if (!activeSessionId) return;
+
+    // Optimistic user message
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
       text,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-
-    // 1. Cập nhật tin nhắn của User vào UI ngay lập tức
-    let updatedSessions = sessions.map(session => {
-      if (session.id === activeSessionId) {
-        // Tự đổi tiêu đề chat dựa trên câu hỏi đầu tiên
-        const title = session.messages.length === 0 ? (text.length > 20 ? text.substring(0, 20) + '...' : text) : session.title;
-        return {
-          ...session,
-          title,
-          messages: [...session.messages, userMsg]
-        };
-      }
-      return session;
-    });
-    setSessions(updatedSessions);
+    setSessionMessages(prev => ({
+      ...prev,
+      [activeSessionId]: [...(prev[activeSessionId] || []), userMsg],
+    }));
 
     try {
-      // 2. Gọi API tới Backend FastAPi/Flask (Ví dụ: cổng 8000)
-      // Truyền kèm `session_id` để Backend xử lý lưu bộ nhớ (Weaviate/Redis)
-      const response = await fetch('http://localhost:8000/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          session_id: activeSessionId
-        }),
-      });
-      const data = await response.json();
-
+      const data = await chatApi.send(activeSessionId, text);
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
-        text: data.response || 'Xin lỗi, tôi gặp sự cố khi xử lý thông tin.',
-        timestamp: new Date()
+        text: data.response,
+        timestamp: new Date(),
       };
-
-      // 3. Cập nhật phản hồi của Bot vào đúng Session
-      setSessions(prev => prev.map(s => {
-        if (s.id === activeSessionId) {
-          return { ...s, messages: [...s.messages, botMsg] };
-        }
-        return s;
+      setSessionMessages(prev => ({
+        ...prev,
+        [activeSessionId]: [...(prev[activeSessionId] || []), botMsg],
       }));
-
+      if (data.title) fetchSessions(); // cập nhật title mới lên sidebar
     } catch (error) {
-      console.error("Lỗi kết nối Backend:", error);
+      console.error(error);
+      const errorMsg: Message = {
+        id: (Date.now() + 2).toString(),
+        sender: 'bot',
+        text: 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.',
+        timestamp: new Date(),
+      };
+      setSessionMessages(prev => ({
+        ...prev,
+        [activeSessionId]: [...(prev[activeSessionId] || []), errorMsg],
+      }));
     }
   };
+
+  if (loading) return <div className="flex items-center justify-center h-screen">Đang tải...</div>;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
       <Sidebar
-        sessions={sessions}
+        sessions={chatSessions}
         activeSessionId={activeSessionId}
         onSelectSession={setActiveSessionId}
         onCreateSession={handleCreateSession}

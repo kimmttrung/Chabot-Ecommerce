@@ -16,9 +16,11 @@ class MySalesCrew:
     tasks_config = '../config/tasks.yaml'
 
     def __init__(self) -> None:
-        # Khởi tạo bộ não LLM thông qua Groq
+        
+        # Tạo model Gemini
         self.llm = LLM(
-            model="groq/llama-3.1-8b-instant",
+            model="gemini/gemini-2.5-flash", 
+            api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0.1
         )
 
@@ -33,7 +35,6 @@ class MySalesCrew:
             max_iter=2,
             respect_context_window=True,
             use_system_prompt=True,
-            cache=False
         )
 
     @task

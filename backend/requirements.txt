@@ -5,7 +5,6 @@ lxml
 pandas
 python-dotenv
 langchain_google_genai
-weaviate
 crewai
 fastapi
 uvicorn
@@ -13,3 +12,5 @@ agents
 weaviate-client>=4.5.4
 langchain-huggingface 
 sentence-transformers
+psycopg2-binary
+langchain-google-genai

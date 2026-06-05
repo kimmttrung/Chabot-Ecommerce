@@ -23,19 +23,43 @@ embeddings_model = HuggingFaceEmbeddings(
     model_kwargs={"token": hf_token} if hf_token else {}
 )
 
-# 2. KHỞI TẠO KẾT NỐI WEAVIATE TOÀN CỤC (GLOBAL CLIENT) - CHỈ CHẠY 1 LẦN KHI STARTUP
-print("🔌 Chatbot đang thiết lập kết nối vĩnh viễn tới Weaviate Cloud v4...")
-clean_domain = WEAVIATE_URL.strip().replace("https://", "").replace("http://", "").strip("/")
-final_cluster_url = f"https://{clean_domain}"
+weaviate_client = None
 
-weaviate_client = weaviate.connect_to_weaviate_cloud(
-    cluster_url=final_cluster_url,
-    auth_credentials=Auth.api_key(WEAVIATE_API_KEY.strip()),
-    skip_init_checks=True,
-    additional_config=AdditionalConfig(
-        timeout=Timeout(init=30, query=90, insert=120)  # Tăng thời gian chờ
-    )
-)
+def get_weaviate_client():
+    """Hàm khởi tạo hoặc trả về client Weaviate một cách an toàn"""
+    global weaviate_client
+    
+    # Nếu client chưa được tạo, tiến hành tạo mới
+    if weaviate_client is None:
+        try:
+            print("🔌 Chatbot đang thiết lập kết nối tới Weaviate Cloud v4...")
+            clean_domain = WEAVIATE_URL.strip().replace("https://", "").replace("http://", "").strip("/")
+            final_cluster_url = f"https://{clean_domain}"
+
+            weaviate_client = weaviate.connect_to_weaviate_cloud(
+                cluster_url=final_cluster_url,
+                auth_credentials=Auth.api_key(WEAVIATE_API_KEY.strip()),
+                skip_init_checks=True,
+                additional_config=AdditionalConfig(
+                    timeout=Timeout(init=15, query=60, insert=60) # Giảm init timeout để tránh treo app lâu
+                )
+            )
+            print("✅ Kết nối khởi tạo Weaviate thành công!")
+        except Exception as e:
+            print(f"⚠️ Cảnh báo: Chưa thể kết nối Weaviate lúc khởi động: {e}")
+            return None
+
+    # Nếu client đã tồn tại nhưng bị mất kết nối ngầm, thực hiện kết nối lại
+    try:
+        if not weaviate_client.is_connected():
+            print("🔄 Phát hiện mất kết nối ngầm, đang kết nối lại Weaviate...")
+            weaviate_client.connect()
+    except Exception as e:
+        print(f"❌ Không thể tái kết nối tới Weaviate: {e}")
+        return None
+
+    return weaviate_client
+
 
 
 @tool("search_weaviate_tool")
@@ -46,8 +70,9 @@ def search_weaviate_tool(query: str) -> str:
     Trả về thông tin sản phẩm bao gồm tên, giá, thông số và link.
     """
     try:
-        if not weaviate_client.is_connected():
-            weaviate_client.connect()
+        client = get_weaviate_client()
+        if client is None:
+            return "Lỗi xảy ra: Không thể thiết lập kết nối tới máy chủ cơ sở dữ liệu Weaviate Cloud."
 
         max_price = None
         price_match = re.search(r'(\d+)\s*(triệu|tr)', query.lower())
@@ -59,10 +84,11 @@ def search_weaviate_tool(query: str) -> str:
             filters = Filter.by_property("price").less_or_equal(max_price)
 
         query_vector = embeddings_model.embed_query(clean_query)
-        product_collection = weaviate_client.collections.get("Product")
+        
+        product_collection = client.collections.get("Product")
         result = product_collection.query.near_vector(
             near_vector=query_vector,
-            limit=3,
+            limit=2,
             filters=filters,
             return_properties=["name", "price", "url", "specifications"]
         )
